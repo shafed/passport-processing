@@ -8,6 +8,7 @@ from PIL import Image
 from make_barcode import generate_barcodes, return_barcode
 
 
+# Convert pdf to image because streamlit doesn't support pdf view
 def pdf_to_images(uploaded_pdf):
     pdf_bytes = uploaded_pdf.read()
     doc = fitz.open(stream=pdf_bytes, filetype="pdf")
@@ -30,12 +31,16 @@ def convert_for_download(df):
     return df.to_csv().encode("utf-8")
 
 
+# Upload area
 uploaded_files = st.file_uploader(
     "Загрузите файлы", accept_multiple_files=True, type=["jpg", "jpeg", "png", "pdf"]
 )
+
+# Page config
 all_tables = []
 if uploaded_files:
     for i, uploaded_file in enumerate(uploaded_files):
+        # Two columns for scan and info
         col_doc, col_card = st.columns([1, 1])
         with col_doc:
             with st.expander("Развернуть изображение", expanded=False):
@@ -59,7 +64,10 @@ if uploaded_files:
             )
             st.image(return_barcode(f"PAS-{i + 1:06}"), width=100)
         all_tables.append(edited_table)
+
     final_table = pd.concat(all_tables, ignore_index=True)
+
+    # Create button
     csv = convert_for_download(final_table)
     st.download_button(
         label="Экспортировать таблицу как CSV",
