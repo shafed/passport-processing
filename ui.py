@@ -36,25 +36,28 @@ uploaded_files = st.file_uploader(
 all_tables = []
 if uploaded_files:
     for i, uploaded_file in enumerate(uploaded_files):
-        with st.expander("Развернуть изображение"):
-            if uploaded_file.type.startswith("image/"):
-                st.image(uploaded_file, use_container_width=True)
-            elif uploaded_file.type == "application/pdf":
-                images = pdf_to_images(uploaded_file)
-                for page_number, image in enumerate(images, start=1):
-                    st.write(f"Страница {page_number}")
-                    st.image(image, use_container_width=True)
-        edited_table = view_and_correct(  # TODO использую заглушку
-            [
-                {
-                    "serial_number": "12345",
-                    "manufacturer": "ООО Завод",
-                    "date": "2024-01-01",
-                }
-            ],
-            i,
-        )
-        st.image(return_barcode(f"PAS-{i + 1:06}"), width=100)
+        col_doc, col_card = st.columns([1, 1])
+        with col_doc:
+            with st.expander("Развернуть изображение", expanded=False):
+                if uploaded_file.type.startswith("image/"):
+                    st.image(uploaded_file, use_container_width=True)
+                elif uploaded_file.type == "application/pdf":
+                    images = pdf_to_images(uploaded_file)
+                    for page_number, image in enumerate(images, start=1):
+                        st.write(f"Страница {page_number}")
+                        st.image(image, use_container_width=True)
+        with col_card:
+            edited_table = view_and_correct(  # TODO использую заглушку
+                [
+                    {
+                        "serial_number": "12345",
+                        "manufacturer": "ООО Завод",
+                        "date": "2024-01-01",
+                    }
+                ],
+                i,
+            )
+            st.image(return_barcode(f"PAS-{i + 1:06}"), width=100)
         all_tables.append(edited_table)
     final_table = pd.concat(all_tables, ignore_index=True)
     csv = convert_for_download(final_table)
