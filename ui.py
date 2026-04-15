@@ -24,6 +24,7 @@ def pdf_to_images(uploaded_pdf):
 def view_and_correct(result_of_OCR, index):
     table = pd.DataFrame(result_of_OCR)
     edited_table = st.data_editor(table, use_container_width=True, key=index)
+    edited_table["passport_id"] = f"PAS-{index + 1:06}"
     return edited_table
 
 
@@ -31,51 +32,73 @@ def convert_for_download(df):
     return df.to_csv().encode("utf-8")
 
 
-# Upload area
-uploaded_files = st.file_uploader(
-    "Загрузите файлы", accept_multiple_files=True, type=["jpg", "jpeg", "png", "pdf"]
-)
+all_tables = []
+passport_map = {}
+if "passport_map" not in st.session_state:
+    st.session_state.passport_map = {}
 
 # Page config
-all_tables = []
-if uploaded_files:
-    for i, uploaded_file in enumerate(uploaded_files):
-        # Two columns for scan and info
-        col_doc, col_card = st.columns([1, 1])
-        with col_doc:
-            with st.expander("Развернуть изображение", expanded=False):
-                if uploaded_file.type.startswith("image/"):
-                    st.image(uploaded_file, use_container_width=True)
-                elif uploaded_file.type == "application/pdf":
-                    images = pdf_to_images(uploaded_file)
-                    for page_number, image in enumerate(images, start=1):
-                        st.write(f"Страница {page_number}")
-                        st.image(image, use_container_width=True)
-        with col_card:
-            edited_table = view_and_correct(  # TODO использую заглушку
-                [
-                    {
-                        "serial_number": "12345",
-                        "manufacturer": "ООО Завод",
-                        "date": "2024-01-01",
-                    }
-                ],
-                i,
-            )
-            st.image(return_barcode(f"PAS-{i + 1:06}"), width=100)
-        all_tables.append(edited_table)
-
-    final_table = pd.concat(all_tables, ignore_index=True)
-
-    # Create button
-    csv = convert_for_download(final_table)
-    st.download_button(
-        label="Экспортировать таблицу как CSV",
-        data=csv,
-        file_name="passport.csv",
-        mime="text/csv",
-        icon=":material/download:",
+st.set_page_config(page_title="Паспорта оборудования", layout="wide")
+tab_digitize, tab_lookup = st.tabs(["Оцифровка", "Поиск по базе"])
+with tab_digitize:
+    # Upload area
+    uploaded_files = st.file_uploader(
+        "Загрузите файлы",
+        accept_multiple_files=True,
+        type=["jpg", "jpeg", "png", "pdf"],
     )
-    if st.button("Сгенерировать штрихкод", type="primary"):
-        generate_barcodes(len(uploaded_files), "PAS", "barcodes/passports")
-        st.success("Штрихкоды сгенерированы")
+    if uploaded_files:
+        for i, uploaded_file in enumerate(uploaded_files):
+            # Two columns for scan and info
+            col_doc, col_card = st.columns([1, 1])
+            with col_doc:
+                with st.expander("Развернуть изображение", expanded=False):
+                    if uploaded_file.type.startswith("image/"):
+                        st.image(uploaded_file, use_container_width=True)
+                    elif uploaded_file.type == "application/pdf":
+                        images = pdf_to_images(uploaded_file)
+                        for page_number, image in enumerate(images, start=1):
+                            st.write(f"Страница {page_number}")
+                            st.image(image, use_container_width=True)
+            with col_card:
+                edited_table = view_and_correct(  # TODO использую заглушку
+                    [
+                        {
+                            "serial_number": "12345",
+                            "manufacturer": "ООО Завод",
+                            "date": "2024-01-01",
+                        }
+                    ],
+                    i,
+                )
+                st.image(return_barcode(f"PAS-{i + 1:06}"), width=100)
+            all_tables.append(edited_table)
+            passport_id = f"PAS-{i + 1:06}"
+            st.session_state.passport_map[passport_id] = edited_table
+
+        final_table = pd.concat(all_tables, ignore_index=True)
+
+        # Create button
+        csv = convert_for_download(final_table)
+        st.download_button(
+            label="Экспортировать таблицу как CSV",
+            data=csv,
+            file_name="passport.csv",
+            mime="text/csv",
+            icon=":material/download:",
+        )
+        if st.button("Сгенерировать штрихкод", type="primary"):
+            generate_barcodes(len(uploaded_files), "PAS", "barcodes/passports")
+            st.success("Штрихкоды сгенерированы")
+
+with tab_lookup:
+    st.title("Поиск паспорта по штрихкоду")
+    code = st.text_input("Впешите значение штрихкода", key="scanner_input")
+    if code:
+        code = code.strip()
+        if code in passport_map:
+            passport = passport_map[code]
+            st.success(f"Найден паспорт {code}")
+            st.dataframe(passport, use_container_width=True)
+        else:
+            st.error("Паспорт не найден")
