@@ -17,19 +17,12 @@ def generate_barcodes(count: int, prefix: str, out_dir):
         with open(f"{out_dir}/{value}.svg", "wb") as f:
             Code128(value, writer=SVGWriter()).write(f)
 
-        rv = BytesIO()
-        Code128(value, writer=SVGWriter()).write(rv)
-
 
 def return_barcode(value: str):
     buffer = BytesIO()
     Code128(value, writer=ImageWriter()).write(buffer)
     buffer.seek(0)
     return buffer
-
-
-generate_barcodes(count_of_passports, "PAS", "barcodes/passports")
-generate_barcodes(count_of_cabs, "CAB", "barcodes/cabs")
 
 
 def decode_barcode(value: str):
