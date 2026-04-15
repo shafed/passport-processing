@@ -96,8 +96,8 @@ with tab_lookup:
     code = st.text_input("Впешите значение штрихкода", key="scanner_input")
     if code:
         code = code.strip()
-        if code in passport_map:
-            passport = passport_map[code]
+        if code in st.session_state.passport_map:
+            passport = st.session_state.passport_map[code]
             st.success(f"Найден паспорт {code}")
             st.dataframe(passport, use_container_width=True)
         else:
